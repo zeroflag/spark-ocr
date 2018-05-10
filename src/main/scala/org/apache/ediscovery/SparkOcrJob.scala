@@ -23,6 +23,7 @@ package org.apache.ediscovery
 import java.io.DataInputStream
 
 import org.apache.ediscovery.ocr.{OCR, TesarrectOcr}
+import org.apache.spark.input.PortableDataStream
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ghost4j.document.PDFDocument
 
@@ -44,7 +45,7 @@ object SparkOcrJob {
       .set("spark.executor.memory", "1g")
   }
 
-  def convertToString(file: (String, org.apache.spark.input.PortableDataStream)): String = {
+  def convertToString(file: (String, PortableDataStream)): String = {
     val stream = file._2.open
     try {
       ocr.recognize(read(stream))
