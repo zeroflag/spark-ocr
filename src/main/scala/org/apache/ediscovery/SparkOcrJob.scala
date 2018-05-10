@@ -20,6 +20,8 @@
 
 package org.apache.ediscovery
 
+import java.io.DataInputStream
+
 import org.apache.ediscovery.ocr.{OCR, TesarrectOcr}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ghost4j.document.PDFDocument
@@ -29,8 +31,10 @@ object SparkOcrJob {
 
   def main(args: Array[String]): Unit = {
     val sparkContext = new SparkContext(sparkConf)
-    val input = sparkContext.binaryFiles("./sample.pdf")
-    input.map(countWords).foreach(println)
+    sparkContext
+      .binaryFiles("./sample.pdf")
+      .map(convertToString)
+      .foreach(println)
   }
 
   private def sparkConf = {
@@ -40,9 +44,18 @@ object SparkOcrJob {
       .set("spark.executor.memory", "1g")
   }
 
-  def countWords(file: (String, org.apache.spark.input.PortableDataStream)) = {
-    val document: PDFDocument = new PDFDocument();
-    document.load(file._2.open)
-    ocr.recognize(document)
+  def convertToString(file: (String, org.apache.spark.input.PortableDataStream)): String = {
+    val stream = file._2.open
+    try {
+      ocr.recognize(read(stream))
+    } finally {
+      stream.close()
+    }
+  }
+
+  private def read(stream: DataInputStream) = {
+    val document: PDFDocument = new PDFDocument()
+    document.load(stream)
+    document
   }
 }
