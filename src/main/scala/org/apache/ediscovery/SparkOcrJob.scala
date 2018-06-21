@@ -22,35 +22,54 @@ package org.apache.ediscovery
 
 import java.io.DataInputStream
 
-import org.apache.ediscovery.ocr.{OCR, TesarrectOcr}
+import org.apache.ediscovery.ocr.{OCR, OpenPdfTextConverter, TesarrectOcr}
 import org.apache.spark.input.PortableDataStream
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ghost4j.document.PDFDocument
 
 object SparkOcrJob {
-  val ocr: OCR = new TesarrectOcr("./data/", "eng", 300)
+//  val ocr: OCR = new TesarrectOcr("./data/", "eng", 300)
+  val ocr: OCR = new OpenPdfTextConverter()
+
+  val usage = s"""
+Sample usage:
+
+ $$SPARK_HOME/bin/spark-submit
+    --class ${SparkOcrJob.getClass.getName}
+    --driver-memory 512m
+    --executor-memory 341m
+    --master spark://master:6066
+    --deploy-mode cluster
+    /vagrant/spark-ocr-assembly-0.1.jar
+    hdfs://c7401:8020/user/root/*.pdf
+"""
 
   def main(args: Array[String]): Unit = {
+    if (args.length == 0) {
+      println(usage)
+      System.exit(1)
+    }
+    println(s"Converting PDF to text in ${args(0)}")
     val sparkContext = new SparkContext(sparkConf)
     sparkContext
-      .binaryFiles("./sample.pdf")
+      .binaryFiles(args(0))
       .map(convertToString)
-      .foreach(println)
+      .foreach { result => println("File: " + result._1 + " content: " + result._2) }
   }
 
   private def sparkConf = {
     new SparkConf()
       .setAppName("EDiscovery Spark OCR")
-      .setMaster("local[2]")
       .set("spark.executor.memory", "1g")
   }
 
-  def convertToString(file: (String, PortableDataStream)): String = {
-    val stream = file._2.open
+  def convertToString(binaryFile: (String, PortableDataStream)): (String, String) = {
+    val (name, content) = binaryFile
+    val stream = content.open
     try {
-      ocr.recognize(read(stream))
+      (name, ocr.recognize(read(stream)))
     } finally {
-      stream.close()
+      stream.close
     }
   }
 
