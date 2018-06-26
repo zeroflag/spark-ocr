@@ -13,6 +13,7 @@ lazy val os = "macosx-x86_64"
 
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+  "org.apache.solr" % "solr-solrj" % "7.4.0",
   "org.ghost4j" % "ghost4j" % "1.0.0",
   "org.bytedeco" % "javacpp" % javaCppVer,
   "org.bytedeco.javacpp-presets" % "tesseract" % tessaVer,
@@ -23,6 +24,7 @@ libraryDependencies ++= Seq(
 )
 
 assemblyMergeStrategy in assembly := {
+  case PathList("org", "apache", xs @ _*)  => MergeStrategy.first
   case PathList("org", "ghost4j", xs @ _*)  => MergeStrategy.first
   case PathList("org", "bytedeco", xs @ _*) => MergeStrategy.first
   case PathList("com", "lowagie", xs @ _*) => MergeStrategy.first

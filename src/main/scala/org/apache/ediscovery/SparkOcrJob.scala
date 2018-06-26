@@ -23,6 +23,8 @@ package org.apache.ediscovery
 import java.io.DataInputStream
 
 import org.apache.ediscovery.ocr.{OCR, OpenPdfTextConverter, TesarrectOcr}
+import org.apache.solr.client.solrj.impl.HttpSolrClient
+import org.apache.solr.common.SolrInputDocument
 import org.apache.spark.input.PortableDataStream
 import org.apache.spark.{SparkConf, SparkContext}
 import org.ghost4j.document.PDFDocument
@@ -49,12 +51,13 @@ Sample usage:
       println(usage)
       System.exit(1)
     }
-    println(s"Converting PDF to text in ${args(0)}")
+    val hdfsPath = args(0)
+    println(s"Converting PDF to text in ${hdfsPath}")
     val sparkContext = new SparkContext(sparkConf)
     sparkContext
-      .binaryFiles(args(0))
+      .binaryFiles(hdfsPath)
       .map(convertToString)
-      .foreach { result => println("File: " + result._1 + " content: " + result._2) }
+      .foreach(storeInSolr)
   }
 
   private def sparkConf = {
@@ -77,5 +80,21 @@ Sample usage:
     val document: PDFDocument = new PDFDocument()
     document.load(stream)
     document
+  }
+
+  def storeInSolr(nameAndContent: (String, String)) = {
+    val (name, content) = nameAndContent
+    println(s"Storing ${name}..")
+    val solr = new HttpSolrClient.Builder("http://c7401:8886/solr/documents").build // TODO read from command line
+    try {
+
+      val document = new SolrInputDocument
+      document.addField("filename", name)
+      document.addField("text", content)
+      println(solr.add(document))
+      solr.commit()
+    } finally {
+      solr.close()
+    }
   }
 }
